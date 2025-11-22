@@ -7,15 +7,16 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.10.1/dist/nipplejs.min.js"></script>
   <style>
-    body { background: #000; color: #fff; font-family: 'Courier New', monospace; }
-    .blink { animation: blink 1.5s infinite; }
-    @keyframes blink { 50% { opacity: 0.3; } }
-    .crosshair { position: absolute; inset: 0; pointer-events: none; }
-    .crosshair::after { content: '+'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; color: rgba(255,255,255,0.3); }
+    body { background:#000; color:#fff; font-family:'Courier New',monospace; }
+    .blink { animation:blink 1.5s infinite; } @keyframes blink { 50% { opacity:0.3; } }
+    .crosshair::after { content:'+'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:48px; color:rgba(255,255,255,0.25); pointer-events:none; }
   </style>
 </head>
 <body class="min-h-screen bg-black text-white p-2">
+
+  <!-- Header -->
   <header class="flex items-center justify-between mb-3 pb-3 border-b-2 border-gray-700">
     <div class="flex items-center gap-4">
       <button class="p-2 border border-gray-700 bg-gray-900"><i data-lucide="menu"></i></button>
@@ -28,7 +29,7 @@
       </div>
     </div>
     <div class="flex items-center gap-3">
-      <div id="armed" class="px-3 py-1 border-2 border-white bg-gray-900 text-xs font-bold">ARMED</div>
+      <div class="px-3 py-1 border-2 border-white bg-gray-900 text-xs font-bold">ARMED</div>
       <button class="p-2 border border-gray-700 bg-gray-900"><i data-lucide="crosshair"></i></button>
       <button class="p-2 border border-gray-700 bg-gray-900"><i data-lucide="settings"></i></button>
       <button class="p-2 border border-gray-700 bg-gray-900"><i data-lucide="bell"></i></button>
@@ -36,86 +37,75 @@
   </header>
 
   <div class="grid grid-cols-2 gap-3 mb-3">
-    <!-- LIVE FEED -->
-    <div class="bg-gray-950 border-2 border-gray-700 p-3 relative">
-      <div class="flex justify-between mb-2 pb-2 border-b border-gray-700">
-        <h2 class="text-sm font-bold">LIVE FEED</h2>
-        <div class="text-xs text-gray-400">CAM-01 | THERMAL OFF</div>
+    <!-- Live Feed -->
+    <div class="bg-gray-950 border-2 border-gray-700 p-3 relative crosshair">
+      <div class="flex justify-between mb-2 pb-2 border-b border-gray-700 text-sm font-bold">
+        <span>LIVE FEED</span>
+        <span class="text-xs text-gray-400">CAM-01 | THERMAL OFF</span>
       </div>
-      <div class="relative bg-black border border-gray-700 h-72 crosshair">
-        <img id="video" src="/video" class="w-full h-full object-cover grayscale contrast-125"/>
-        <div class="absolute top-2 left-2 bg-black/80 px-2 py-1 border border-gray-600 text-xs">
-          <span id="fps">60</span> FPS
-        </div>
-        <div class="absolute top-2 right-2 bg-black/80 px-2 py-1 border border-gray-600 text-xs">1920x1080</div>
-        <div class="absolute bottom-2 left-2 bg-black/80 px-2 py-1 border border-gray-600 text-xs">
-          LAT: <span id="lat">--.----°</span> | LON: <span id="lon">--.----°</span>
-        </div>
+      <img id="video" src="/video" class="w-full h-80 object-cover grayscale contrast-125"/>
+      <div class="absolute top-2 left-2 bg-black/80 px-2 py-1 border border-gray-600 text-xs"><span id="fps">60</span> FPS</div>
+      <div class="absolute bottom-2 left-2 bg-black/80 px-2 py-1 border border-gray-600 text-xs">
+        LAT: <span id="lat">--.----°</span> | LON: <span id="lon">--.----°</span>
       </div>
     </div>
 
-    <!-- GPS MAP -->
+    <!-- GPS Map -->
     <div class="bg-gray-950 border-2 border-gray-700 p-3">
-      <div class="flex justify-between mb-2 pb-2 border-b border-gray-700">
-        <h2 class="text-sm font-bold">GPS NAVIGATION</h2>
-        <div class="text-xs text-gray-400">GRID: 43Q EB 234 678</div>
+      <div class="flex justify-between mb-2 pb-2 border-b border-gray-700 text-sm font-bold">
+        <span>GPS NAVIGATION</span>
+        <span class="text-xs text-gray-400">GRID: 43Q EB 234 678</span>
       </div>
-      <div id="map" class="h-72 bg-gray-900 border border-gray-700"></div>
+      <div id="map" class="h-80 bg-gray-900 border border-gray-700"></div>
     </div>
   </div>
 
   <div class="grid grid-cols-3 gap-3">
-    <!-- JOYSTICK -->
-    <div class="bg-gray-950 border-2 border-gray-700 p-4 text-center">
-      <h2 class="text-sm font-bold mb-3 pb-2 border-b border-gray-700">MOVEMENT CONTROL</h2>
-      <div id="joystick" class="inline-block"></div>
+    <!-- MOVEMENT CONTROL – FIXED & BEAUTIFUL JOYSTICK -->
+    <div class="bg-gray-950 border-2 border-gray-700 p-6 text-center">
+      <h2 class="text-sm font-bold mb-4 pb-2 border-b border-gray-700">MOVEMENT CONTROL</h2>
+      <div id="joystick-zone" class="relative w-48 h-48 mx-auto bg-gray-900 border-4 border-gray-600 rounded-full">
+        <div id="joystick" class="absolute inset-0"></div>
+      </div>
+      <p class="mt-4 text-xs text-gray-400 border border-gray-700 bg-black inline-block px-3 py-1">DRAG TO DRIVE • RELEASE TO STOP</p>
       <div class="mt-4 grid grid-cols-2 gap-3">
-        <button class="bg-black border-2 border-gray-600 hover:border-white py-3 text-xs font-bold">[ STOP ]</button>
+        <button onclick="socket.emit('joy',{x:0,y:0})" class="bg-black border-2 border-red-600 hover:border-red-400 py-3 text-xs font-bold">[ EMERGENCY STOP ]</button>
         <button class="bg-black border-2 border-gray-600 hover:border-white py-3 text-xs font-bold">RESET</button>
       </div>
     </div>
 
-    <!-- BATTERY -->
-    <div class="bg-gray-950 border-2 border-gray-700 p-4 text-center">
-      <h2 class="text-sm font-bold mb-3 pb-2 border-b border-gray-700">POWER STATUS</h2>
+    <!-- Battery -->
+    <div class="bg-gray-950 border-2 border-gray-700 p-6 text-center">
+      <h2 class="text-sm font-bold mb-4 pb-2 border-b border-gray-700">POWER STATUS</h2>
       <div class="relative w-48 h-48 mx-auto">
         <svg class="w-full h-full -rotate-90">
-          <circle cx="96" cy="96" r="76" stroke="#374151" stroke-width="12" fill="none"/>
-          <circle cx="96" cy="96" r="76" stroke="#fff" stroke-width="12" fill="none" stroke-dasharray="477" stroke-dashoffset="477" id="battery-arc"/>
+          <circle cx="96" cy="96" r="76" stroke="#374151" stroke-width="14" fill="none"/>
+          <circle cx="96" cy="96" r="76" stroke="#fff" stroke-width="14" fill="none" stroke-dasharray="477" stroke-dashoffset="477" id="battery-arc"/>
         </svg>
         <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <i data-lucide="battery" class="w-10 h-10 mb-2"></i>
+          <i data-lucide="battery" class="w-12 h-12 mb-2"></i>
           <div class="text-5xl font-bold" id="battery">73%</div>
           <div class="text-xs text-gray-400">OPERATIONAL</div>
         </div>
       </div>
-      <div class="mt-4 grid grid-cols-2 gap-4 text-xs">
-        <div class="border border-gray-700 bg-black p-2"><div class="text-gray-400">VOLTAGE</div><div class="font-bold" id="volt">24.3V</div></div>
-        <div class="border border-gray-700 bg-black p-2"><div class="text-gray-400">CURRENT</div><div class="font-bold">3.2A</div></div>
+      <div class="mt-4 text-xs">
+        <span class="text-gray-400">VOLTAGE:</span> <span id="volt" class="font-bold">24.3V</span>
       </div>
     </div>
 
-    <!-- AUDIO -->
-    <div class="bg-gray-950 border-2 border-gray-700 p-4">
+    <!-- Audio -->
+    <div class="bg-gray-950 border-2 border-gray-700 p-6">
       <h2 class="text-sm font-bold mb-3 pb-2 border-b border-gray-700 text-center">MIC INPUT</h2>
       <div class="flex items-center gap-2 mb-4">
-        <i data-lucide="volume-2" class="w-5 h-5"></i>
-        <div class="flex-1 flex gap-1 h-8">
-          <div class="flex-1 border border-gray-700 bg-black" v-for="i in 12" :class="i <= mic ? 'bg-white' : ''"></div>
+        <i data-lucide="volume-2"></i>
+        <div class="flex-1 flex gap-1 h-10" id="mic-bars">
+          <div class="flex-1 border border-gray-700 bg-black"></div>
+          <div class="flex-1 border border-gray-700 bg-black"></div>
+          <!-- 10 more bars created by JS -->
         </div>
-        <i data-lucide="mic" class="w-5 h-5"></i>
+        <i data-lucide="mic"></i>
       </div>
-      <div class="text-xs text-center text-gray-400 border border-gray-700 bg-black p-1 mb-4">CHANNEL: SECURE-01 | ENCRYPTED</div>
-
-      <h2 class="text-sm font-bold mb-3 pb-2 border-b border-gray-700 text-center">SPEAKER OUTPUT</h2>
-      <div class="flex items-center gap-3">
-        <i data-lucide="volume-2" class="w-5 h-5"></i>
-        <div class="flex-1 h-8 bg-black border-2 border-gray-700 relative">
-          <div class="absolute h-full bg-white transition-all" id="volume-bar" style="width:65%"></div>
-        </div>
-        <i data-lucide="volume-2" class="w-6 h-6"></i>
-      </div>
-      <div class="text-xs text-center text-gray-400 border border-gray-700 bg-black p-1">VOLUME: <span id="volume">65</span>% | ACTIVE</div>
+      <div class="text-xs text-center text-gray-400 border border-gray-700 bg-black p-1">SECURE-01 | ENCRYPTED</div>
     </div>
   </div>
 
@@ -123,29 +113,39 @@
     lucide.createIcons();
     const socket = io();
 
-    // Timer
+    // Mission timer
     let start = Date.now();
     setInterval(() => {
-      let s = Math.floor((Date.now() - start)/1000);
+      let s = Math.floor((Date.now()-start)/1000);
       document.getElementById('timer').textContent = new Date(s*1000).toISOString().substr(11,8);
     }, 1000);
 
-    // Joystick
+    // PERFECT VISIBLE JOYSTICK
     const joy = nipplejs.create({
-      zone: document.getElementById('joystick'),
+      zone: document.getElementById('joystick-zone'),
       mode: 'static',
       position: { left: '50%', top: '50%' },
-      color: 'white',
-      size: 140
+      color: '#fff',
+      size: 160,
+      threshold: 0.1,
+      restOpacity: 0.8
     });
-    joy.on('move', (e, data) => socket.emit('joy', {x: data.vector.x.toFixed(2), y: -data.vector.y.toFixed(2)}));
+
+    joy.on('move', (evt, data) => {
+      if (data.vector) {
+        socket.emit('joy', {
+          x: parseFloat(data.vector.x.toFixed(2)),
+          y: parseFloat((-data.vector.y).toFixed(2))  // invert Y
+        });
+      }
+    });
     joy.on('end', () => socket.emit('joy', {x:0, y:0}));
 
-    // Receive real data
+    // Receive real telemetry
     socket.on('data', d => {
       if (d.lat && d.lon) {
-        document.getElementById('lat').textContent = d.lat.toFixed(4) + '°';
-        document.getElementById('lon').textContent = d.lon.toFixed(4) + '°';
+        document.getElementById('lat').textContent = Number(d.lat).toFixed(4) + '°';
+        document.getElementById('lon').textContent = Number(d.lon).toFixed(4) + '°';
       }
       document.getElementById('battery').textContent = d.batt + '%';
       document.getElementById('volt').textContent = d.volt + 'V';
@@ -155,4 +155,4 @@
     });
   </script>
 </body>
-</html>
+</html>s
