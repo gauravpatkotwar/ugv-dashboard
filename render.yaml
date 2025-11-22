@@ -1,9 +1,0 @@
-services:
-  - type: web
-  - name: ugv-dashboard
-  - env: python
-  - region: oregon
-  - plan: starter
-  - buildCommand: pip install -r requirements.txt
-  - startCommand: gunicorn cloud_app:app --worker-class eventlet --workers 1
-  - autoDeploy: true
