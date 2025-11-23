@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TACTICAL ROVER COMMAND</title>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.10.1/dist/nipplejs.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -12,89 +11,71 @@
     body { background:#000; color:#fff; font-family:monospace; margin:0; padding:10px; }
     #joystick-zone { width:280px; height:280px; margin:30px auto; background:#111; border:6px solid #444; border-radius:50%; position:relative; }
     #joystick-zone::after { content:'DRAG TO DRIVE — RELEASE TO STOP'; position:absolute; bottom:-40px; left:0; right:0; font-size:14px; color:#0f0; text-align:center; }
+    .blink { animation: blink 1s infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
   </style>
 </head>
 <body class="bg-black text-white">
-
   <div class="text-center mb-4">
-    <h1 class="text-3xl font-bold tracking-wider">TACTICAL ROVER COMMAND</h1>
-    <p>MISSION TIME: <span id="timer">00:00:00</span> | STATUS: <span class="text-green-500">ARMED</span></p>
+    <h1 class="text-4xl font-bold tracking-wider text-green-500">TACTICAL ROVER COMMAND</h1>
+    <p class="text-xl">
+      MISSION TIME: <span id="timer">00:00:00</span> | 
+      STATUS: <span class="text-green-500 font-bold">ARMED</span> | 
+      SIGNAL: <span id="sats" class="text-yellow-400">-- sats</span>
+    </p>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
-
-    <!-- LIVE VIDEO -->
+    <!-- LIVE VIDEO + GPS -->
     <div class="bg-gray-900 border-4 border-gray-700 rounded-lg overflow-hidden">
       <div class="bg-gray-800 p-3 text-sm font-bold flex justify-between">
         <span>LIVE FEED — CAM-01</span>
         <span id="fps">60 FPS</span>
       </div>
-      <img id="video" src="/video" class="w-full h-96 object-cover">
-      <div class="bg-black/70 p-2 text-xs">
-        LAT: <span id="lat">--.----</span>° | LON: <span id="lon">--.----</span>°
+      <img id="video" src="https://ugvcontrol.cloud/cam.jpg" class="w-full h-96 object-cover bg-black">
+      <div class="bg-black/90 p-4 text-lg font-mono">
+        <div>LAT: <span id="lat" class="text-green-400">--.------</span>°</div>
+        <div>LON: <span id="lon" class="text-green-400">--.------</span>°</div>
+        <div>ALT: <span id="alt" class="text-cyan-400">--.-</span>m | HDOP: <span id="hdop">--.-</span></div>
+        <div>SPEED: <span id="speed" class="text-yellow-400">0.0</span> km/h</div>
       </div>
     </div>
 
-    <!-- JOYSTICK — NOW IMPOSSIBLE TO MISS -->
+    <!-- JOYSTICK -->
     <div class="bg-gray-900 border-4 border-gray-700 rounded-lg p-8 flex flex-col items-center justify-center">
-      <h2 class="text-2xl font-bold mb-8 text-green-400">MOVEMENT CONTROL</h2>
-      
-      <!-- THIS IS THE EXACT WORKING JOYSTICK -->
-      <div id="joystick-zone">
-        <div id="joystick"></div>
-      </div>
-
-      <button onclick="socket.emit('joy',{x:0,y:0})" 
-              class="mt-10 px-12 py-5 bg-red-800 hover:bg-red-700 border-4 border-red-600 text-xl font-bold rounded">
+      <h2 class="text-3xl font-bold mb-8 text-green-400">MOVEMENT CONTROL</h2>
+      <div id="joystick-zone"><div id="joystick"></div></div>
+      <button id="estop" class="mt-10 px-16 py-6 bg-red-800 hover:bg-red-700 border-4 border-red-600 text-2xl font-bold rounded blink">
         EMERGENCY STOP
       </button>
     </div>
-
   </div>
 
   <script>
     lucide.createIcons();
-    const socket = io();
-
-    // Timer
     let start = Date.now();
     setInterval(() => {
       let s = Math.floor((Date.now() - start)/1000);
       document.getElementById('timer').innerText = new Date(s*1000).toISOString().substr(11,8);
     }, 1000);
 
-    // JOYSTICK — 100% WORKING VERSION
-    const manager = nipplejs.create({
-      zone: document.getElementById('joystick-zone'),
-      mode: 'static',
-      position: { left: '50%', top: '50%' },
-      color: '#00ff00',
-      size: 220,
-      threshold: 0.05,
-      catchDistance: 200,
-      restJoystick: true,
-      restOpacity: 1
-    });
-
-    manager.on('move', (evt, data) => {
-      if (data && data.vector) {
-        const x = parseFloat(data.vector.x.toFixed(2));
-        const y = parseFloat((-data.vector.y).toFixed(2)); // invert Y
-        socket.emit('joy', { x, y });
-      }
-    });
-
-    manager.on('end', () => {
-      socket.emit('joy', { x: 0, y: 0 });
-    });
-
-    // Receive data
-    socket.on('data', d => {
-      if (d.lat) document.getElementById('lat').innerText = Number(d.lat).toFixed(4);
-      if (d.lon) document.getElementById('lon').innerText = Number(d.lon).toFixed(4);
-      if (d.batt !== undefined) document.getElementById('fps').innerText = d.fps || 60;
-      document.getElementById('video').src = '/video?t=' + Date.now();
-    });
+    // ==== LIVE GPS FROM YOUR PI (PUBLIC URL) ====
+    function updateGPS() {
+      fetch('https://ugvcontrol.cloud/telemetry.json?t=' + Date.now())
+        .then(r => r.json())
+        .then(d => {
+          if (d.lat) document.getElementById('lat').innerText = Number(d.lat).toFixed(6);
+          if (d.lon) document.getElementById('lon').innerText = Number(d.lon).toFixed(6);
+          if (d.alt) document.getElementById('alt').innerText = Number(d.alt).toFixed(1);
+          if (d.speed) document.getElementById('speed').innerText = Number(d.speed).toFixed(1);
+          if (d.hdop) document.getElementById('hdop').innerText = d.hdop;
+          if (d.sats) document.getElementById('sats').innerText = d.sats + " sats";
+          document.getElementById('video').src = 'https://ugvcontrol.cloud/cam.jpg?t=' + Date.now();
+        })
+        .catch(() => console.log("Waiting for rover..."));
+    }
+    updateGPS();
+    setInterval(updateGPS, 5000);  // Updates every 5 seconds from anywhere in the world
   </script>
 </body>
 </html>
